@@ -93,6 +93,7 @@ Security filter의 401/403도 같은 형식을 사용합니다.
 ./gradlew test          # Docker 없이 웹/보안/공통 예외 테스트
 ./gradlew build         # 기본 테스트 및 실행 가능한 bootJar 생성
 ./gradlew integrationTest  # Docker 필수: 실제 PostgreSQL, Flyway, JPA 초기화, Health 검증
+./gradlew jacocoTestReport # Docker 필수: 기본·통합 테스트 실행 및 합산 커버리지 생성
 ```
 
 `build`에는 Docker 통합 테스트가 포함되지 않습니다. DB 관련 변경 시
@@ -100,6 +101,24 @@ Security filter의 401/403도 같은 형식을 사용합니다.
 자동 건너뛰지 않습니다. Testcontainers는 별도 임시 DB를 사용합니다.
 리포트는 `build/reports/tests/test/index.html`과
 `build/reports/tests/integrationTest/index.html`에 생성됩니다.
+
+JaCoCo HTML 리포트는 `build/reports/jacoco/test/html/index.html`, XML 리포트는
+`build/reports/jacoco/test/jacocoTestReport.xml`에 생성됩니다.
+
+## CI
+
+GitHub Actions는 `main`·`develop` push, 모든 PR 및 수동 실행을 지원합니다.
+
+- `Java Build`: Java 21에서 `clean build`로 빌드와 기본 테스트를 검증합니다.
+- `Test Coverage`: `clean jacocoTestReport`로 기본 테스트와 PostgreSQL
+  Testcontainers 통합 테스트를 실행하고 두 테스트의 커버리지를 합산합니다.
+
+테스트 결과와 HTML/XML 커버리지 리포트는 Actions의 Artifacts에서 다운로드할 수
+있으며 14일간 보관합니다. 커버리지 최소 비율에 따른 실패 기준은 설정하지 않았습니다.
+별도 DB 서비스나 저장소 secrets는 필요하지 않으며, 통합 테스트의 임시 PostgreSQL은
+GitHub 호스팅 Ubuntu 러너의 Docker에서 실행됩니다.
+
+## 빌드 결과 실행
 
 ```bash
 java -jar build/libs/muse-be-0.0.1-SNAPSHOT.jar
