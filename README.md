@@ -1,0 +1,108 @@
+# MUSE Backend
+
+일상에서 녹음한 소리로 음악을 제작하는 MUSE의 백엔드입니다.
+
+Java 21, Spring Boot 3.5.16, Gradle 8.14.3, Spring Data JPA, PostgreSQL 17,
+Flyway, Spring Security를 사용합니다. Java 21 JDK와 Docker Compose v2가 필요합니다.
+Java toolchain을 21로 고정했으며 JDK 자동 다운로드는 설정하지 않았습니다.
+
+## 로컬 실행
+
+`MUSE-BE` 디렉터리에서 실행합니다.
+
+```bash
+cp .env.example .env
+# .env의 DB_PASSWORD를 로컬 비밀번호로 변경
+docker compose up -d --wait
+./gradlew bootRun
+```
+
+macOS에서 필요한 경우 `export JAVA_HOME=$(/usr/libexec/java_home -v 21)`로
+JDK 21을 선택합니다. Spring Boot와 Docker Compose 모두 `.env`를 읽습니다.
+Spring Boot는 `spring.config.import`로 properties 형식으로 읽기 때문에
+`KEY=value` 형식을 사용하고 값에 따옴표를 붙이지 마세요.
+배포 환경에서는 `.env` 대신 프로세스 환경변수를 주입합니다.
+환경변수는 `.env`보다 우선합니다. DB 이름, 사용자, 비밀번호는 필수입니다.
+
+| 변수 | 용도 | 기본값 |
+| --- | --- | --- |
+| `DB_HOST` | 앱에서 접근할 PostgreSQL 호스트 | `localhost` |
+| `DB_PORT` | PostgreSQL 호스트 포트 | `5432` |
+| `DB_NAME` | 데이터베이스 이름 | 필수 |
+| `DB_USERNAME` | 데이터베이스 사용자 | 필수 |
+| `DB_PASSWORD` | 데이터베이스 비밀번호 | 필수 |
+| `SERVER_PORT` | HTTP 포트 | `8080` |
+| `CORS_ALLOWED_ORIGINS` | 허용 프론트엔드 origin, 쉼표 구분 | `http://localhost:5173` |
+
+DB 포트는 호스트의 `127.0.0.1`에만 공개하며 데이터는 named volume에 보존합니다.
+5432 포트를 이미 사용 중이면 `.env`의 `DB_PORT`를 사용 가능한 포트로 변경하세요.
+`docker compose stop`으로 중지하고 `docker compose down`으로 컨테이너를 제거합니다.
+`docker compose down -v`는 DB 데이터를 삭제하므로 주의하세요.
+기존 volume의 DB 이름·계정·비밀번호는 `.env`를 변경해도 자동 변경되지 않습니다.
+
+## Health Check
+
+```bash
+curl -i http://localhost:8080/api/health
+```
+
+Spring Boot Actuator의 health endpoint로 프로세스와 DB 연결을 확인합니다.
+정상이면 HTTP 200과 `{"status":"UP"}`, 실행 중 DB 장애가 발생하면 HTTP 503과
+`{"status":"DOWN"}`을 반환합니다. DB 정보 등 상세 내역은 공개하지 않습니다.
+DB가 처음부터 연결되지 않으면 Flyway 초기화 실패로 애플리케이션 기동도 실패합니다.
+
+Health만 익명 접근을 허용하고 나머지는 차단합니다. 인증 API, 기본 사용자,
+폼 로그인, HTTP Basic 로그인은 제공하지 않습니다. 인증 방식이 결정되면
+`SecurityConfig`의 접근 규칙과 CSRF·CORS 정책을 함께 조정합니다.
+현재 CSRF 보호는 유지하며 인증 쿠키를 사용하는 cross-origin 요청은 허용하지 않습니다.
+
+## 패키지 구조
+
+```text
+com.muse
+├── MuseApplication
+├── domain
+│   ├── user       # 사용자/인증
+│   ├── project    # 음악 프로젝트
+│   ├── track      # 트랙
+│   ├── sample     # 오디오 샘플
+│   └── share      # 음원 공유
+└── global
+    ├── config     # 보안 및 공통 설정
+    └── exception  # 공통 예외 처리
+```
+
+각 도메인은 `package-info.java`로 경계만 선언했습니다. 기능을 구현할 때 해당
+도메인 안에 controller/service/repository/entity/dto를 필요한 만큼 추가합니다.
+엔티티·CRUD·JWT·파일 저장소 등 아직 요구하지 않은 기능은 만들지 않았습니다.
+
+## DB 변경 및 오류 응답
+
+스키마 변경은 `src/main/resources/db/migration/V{번호}__{설명}.sql`에 추가합니다.
+적용된 migration을 수정하지 말고 새 버전을 추가하세요. 초기 V1은 도메인 테이블
+없이 Flyway 이력을 시작합니다. Hibernate는 `ddl-auto: validate`로만 동작합니다.
+
+오류는 Spring의 `ProblemDetail`(`application/problem+json`) 형식입니다.
+공통 advice는 요청 검증·잘못된 JSON·HTTP 예외의 상태를 유지하고,
+예상하지 못한 예외는 서버에 기록한 뒤 상세 내용을 숨긴 500으로 응답합니다.
+Security filter의 401/403도 같은 형식을 사용합니다.
+
+## 검증
+
+```bash
+./gradlew test          # Docker 없이 웹/보안/공통 예외 테스트
+./gradlew build         # 기본 테스트 및 실행 가능한 bootJar 생성
+./gradlew integrationTest  # Docker 필수: 실제 PostgreSQL, Flyway, JPA 초기화, Health 검증
+```
+
+`build`에는 Docker 통합 테스트가 포함되지 않습니다. DB 관련 변경 시
+`integrationTest`도 실행하세요. Docker가 없으면 통합 테스트는 실패하며
+자동 건너뛰지 않습니다. Testcontainers는 별도 임시 DB를 사용합니다.
+리포트는 `build/reports/tests/test/index.html`과
+`build/reports/tests/integrationTest/index.html`에 생성됩니다.
+
+```bash
+java -jar build/libs/muse-be-0.0.1-SNAPSHOT.jar
+```
+
+jar 실행도 `.env`가 있는 작업 디렉터리 또는 필수 환경변수가 필요합니다.
