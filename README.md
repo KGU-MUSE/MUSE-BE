@@ -14,22 +14,32 @@ Java toolchain을 21로 고정했으며 JDK 자동 다운로드는 설정하지 
 cp .env.example .env
 # .env의 DB_PASSWORD를 로컬 비밀번호로 변경
 docker compose up -d --wait
-./gradlew bootRun
+./gradlew bootRun --args='--spring.profiles.active=dev'
 ```
 
 macOS에서 필요한 경우 `export JAVA_HOME=$(/usr/libexec/java_home -v 21)`로
-JDK 21을 선택합니다. Spring Boot와 Docker Compose 모두 `.env`를 읽습니다.
+JDK 21을 선택합니다. Spring Boot는 `dev` 프로필에서 `.env`를 읽고,
+Docker Compose는 프로필과 관계없이 `.env`를 읽습니다.
 Spring Boot는 `spring.config.import`로 properties 형식으로 읽기 때문에
 `KEY=value` 형식을 사용하고 값에 따옴표를 붙이지 마세요.
-배포 환경에서는 `.env` 대신 프로세스 환경변수를 주입합니다.
-환경변수는 `.env`보다 우선합니다. DB 이름, 사용자, 비밀번호는 필수입니다.
+공통 설정은 `application.yml`, 개발 전용 설정은 `application-dev.yml`에 둡니다.
+`dev`는 자동 활성화하지 않습니다. 실행 인자 대신 `SPRING_PROFILES_ACTIVE=dev`
+환경변수로 활성화할 수도 있습니다. 배포 환경에서는 `dev`를 활성화하지 않고
+`.env` 대신 프로세스 환경변수를 주입합니다.
+환경변수는 `.env`보다 우선합니다. 기본 프로필은 DB 호스트·이름·사용자·비밀번호를
+환경변수로 받습니다. `dev`는 호스트 `localhost`, DB 이름·사용자 `muse`를 기본값으로
+사용하고 비밀번호는 필수입니다. Docker Compose의 DB 이름·사용자·비밀번호는
+프로필과 관계없이 `.env`에 지정해야 합니다.
+
+`dev`에서는 Hibernate SQL을 DEBUG 레벨로 출력하고 포맷팅합니다.
+바인딩된 파라미터 값은 로깅하지 않습니다. 기본 프로필은 SQL 디버그 로그를 켜지 않습니다.
 
 | 변수 | 용도 | 기본값 |
 | --- | --- | --- |
-| `DB_HOST` | 앱에서 접근할 PostgreSQL 호스트 | `localhost` |
+| `DB_HOST` | 앱에서 접근할 PostgreSQL 호스트 | 필수 (`dev`: `localhost`) |
 | `DB_PORT` | PostgreSQL 호스트 포트 | `5432` |
-| `DB_NAME` | 데이터베이스 이름 | 필수 |
-| `DB_USERNAME` | 데이터베이스 사용자 | 필수 |
+| `DB_NAME` | 데이터베이스 이름 | 필수 (`dev`: `muse`) |
+| `DB_USERNAME` | 데이터베이스 사용자 | 필수 (`dev`: `muse`) |
 | `DB_PASSWORD` | 데이터베이스 비밀번호 | 필수 |
 | `SERVER_PORT` | HTTP 포트 | `8080` |
 | `CORS_ALLOWED_ORIGINS` | 허용 프론트엔드 origin, 쉼표 구분 | `http://localhost:5173` |
@@ -80,7 +90,9 @@ com.muse
 
 스키마 변경은 `src/main/resources/db/migration/V{번호}__{설명}.sql`에 추가합니다.
 적용된 migration을 수정하지 말고 새 버전을 추가하세요. 초기 V1은 도메인 테이블
-없이 Flyway 이력을 시작합니다. Hibernate는 `ddl-auto: validate`로만 동작합니다.
+없이 Flyway 이력을 시작합니다. Hibernate는 기본 프로필에서 `ddl-auto: validate`,
+`dev`에서 `ddl-auto: update`로 동작합니다. 개발 중 Hibernate가 자동 반영한 스키마 변경도
+공유·배포 환경에 적용하려면 Flyway 마이그레이션으로 작성해야 합니다.
 
 오류는 Spring의 `ProblemDetail`(`application/problem+json`) 형식입니다.
 공통 advice는 요청 검증·잘못된 JSON·HTTP 예외의 상태를 유지하고,
@@ -121,7 +133,8 @@ GitHub 호스팅 Ubuntu 러너의 Docker에서 실행됩니다.
 ## 빌드 결과 실행
 
 ```bash
-java -jar build/libs/muse-be-0.0.1-SNAPSHOT.jar
+java -jar build/libs/muse-be-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
 ```
 
-jar 실행도 `.env`가 있는 작업 디렉터리 또는 필수 환경변수가 필요합니다.
+개발용 jar 실행도 `.env`가 있는 작업 디렉터리 또는 필수 환경변수가 필요합니다.
+배포 시에는 `--spring.profiles.active=dev`를 제외하고 필수 환경변수를 주입합니다.

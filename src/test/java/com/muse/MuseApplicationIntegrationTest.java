@@ -19,7 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Tag("integration")
 @Testcontainers
-@SpringBootTest(properties = "spring.config.import=")
+@SpringBootTest
 @AutoConfigureMockMvc
 class MuseApplicationIntegrationTest {
     @Container
