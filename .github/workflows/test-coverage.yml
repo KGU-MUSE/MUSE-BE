@@ -31,13 +31,13 @@ jobs:
           cache: gradle
 
       - name: Run default and PostgreSQL integration tests with coverage
-        run: ./gradlew --no-daemon clean jacocoTestReport
+        run: ./gradlew --no-daemon clean :muse-api:jacocoTestReport
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v7
         with:
           name: jacoco-coverage
-          path: build/reports/jacoco/test/
+          path: muse-api/build/reports/jacoco/test/
           if-no-files-found: error
           retention-days: 14
 
@@ -47,6 +47,6 @@ jobs:
         with:
           name: coverage-test-results
           path: |
-            build/reports/tests/
-            build/test-results/
+            **/build/reports/tests/
+            **/build/test-results/
           retention-days: 14

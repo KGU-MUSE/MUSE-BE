@@ -7,7 +7,7 @@
 
 ## 검증
 <!-- 실행한 명령과 결과를 작성하고, 실행하지 않은 검증은 이유를 밝혀 주세요.
-예: ./gradlew build, ./gradlew integrationTest, ./gradlew jacocoTestReport
+예: ./gradlew build, ./gradlew :muse-api:integrationTest, ./gradlew :muse-api:jacocoTestReport
 build의 기본 테스트와 Docker가 필요한 통합 테스트 결과를 구분해 주세요.
 -->
 - 실행 명령:

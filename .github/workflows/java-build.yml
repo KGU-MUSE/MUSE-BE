@@ -39,6 +39,6 @@ jobs:
         with:
           name: java-build-test-results
           path: |
-            build/reports/tests/test/
-            build/test-results/test/
+            **/build/reports/tests/test/
+            **/build/test-results/test/
           retention-days: 14

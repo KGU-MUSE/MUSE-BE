@@ -1,1 +1,3 @@
 rootProject.name = 'muse-be'
+
+include 'muse-api', 'muse-auth', 'muse-domain'

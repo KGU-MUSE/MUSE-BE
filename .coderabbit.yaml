@@ -10,25 +10,25 @@ reviews:
     enabled: true
     drafts: false
   path_filters:
-    - "!build/**"
-    - "!bin/**"
+    - "!**/build/**"
+    - "!**/bin/**"
     - "!.gradle/**"
     - "!.remember/**"
     - "!gradle/wrapper/gradle-wrapper.jar"
     - "!gradlew"
     - "!gradlew.bat"
   path_instructions:
-    - path: "src/main/java/**/*.java"
+    - path: "muse-*/src/main/java/**/*.java"
       instructions: |
         Java 21과 Spring Boot 기반 프로젝트다. 도메인 중심 패키지 구조를 유지한다.
         실제 오류, 보안 취약점, 트랜잭션 경계, JPA 조회 성능과 데이터 정합성을 우선 검토한다.
         Spring Security의 접근 제어와 오류 응답에서 민감정보가 노출되지 않는지 확인한다.
         요구하지 않은 기능이나 불필요한 추상화를 제안하지 않는다.
-    - path: "src/main/resources/db/migration/**/*.sql"
+    - path: "muse-api/src/main/resources/db/migration/**/*.sql"
       instructions: |
         PostgreSQL과 Flyway를 사용한다. 이미 적용된 마이그레이션 수정은 피하고 새 버전을 추가한다.
         데이터 손실, 제약조건, 인덱스, 기존 데이터와의 호환성을 검토한다.
-    - path: "src/test/**/*.java"
+    - path: "muse-*/src/{test,testFixtures}/**/*.java"
       instructions: |
         실제 동작과 오류 응답을 검증하는지 확인한다.
         DB 관련 검증은 PostgreSQL Testcontainers 통합 테스트를 사용한다.

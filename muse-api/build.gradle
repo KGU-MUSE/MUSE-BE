@@ -1,0 +1,86 @@
+plugins {
+    id 'java'
+    id 'java-test-fixtures'
+    id 'jacoco'
+    id 'org.springframework.boot' version '3.5.16'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'muse'
+version = '0.0.1-SNAPSHOT'
+description = 'MUSE backend'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':muse-domain')
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.9.1'
+    implementation 'org.flywaydb:flyway-core'
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    testFixturesImplementation 'org.springframework.boot:spring-boot-test'
+    testFixturesImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testFixturesApi 'org.testcontainers:postgresql'
+}
+
+tasks.named('test') {
+    useJUnitPlatform { excludeTags 'integration' }
+}
+
+tasks.register('integrationTest', Test) {
+    description = 'Runs application, PostgreSQL and Flyway integration tests (requires Docker).'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { includeTags 'integration' }
+    shouldRunAfter tasks.named('test')
+}
+
+jacoco {
+    toolVersion = '0.8.14'
+}
+
+tasks.named('jacocoTestReport') {
+    dependsOn tasks.named('test'), tasks.named('integrationTest'),
+            ':muse-auth:test', ':muse-auth:integrationTest',
+            ':muse-domain:test', ':muse-domain:integrationTest'
+    executionData layout.buildDirectory.file('jacoco/test.exec'),
+            layout.buildDirectory.file('jacoco/integrationTest.exec')
+    executionData fileTree(project(':muse-auth').layout.buildDirectory.dir('jacoco')) { include '*.exec' }
+    executionData fileTree(project(':muse-domain').layout.buildDirectory.dir('jacoco')) { include '*.exec' }
+    additionalClassDirs.from(
+            project(':muse-auth').layout.buildDirectory.dir('classes/java/main'),
+            project(':muse-domain').layout.buildDirectory.dir('classes/java/main'))
+    additionalSourceDirs.from(
+            rootProject.file('muse-auth/src/main/java'),
+            rootProject.file('muse-domain/src/main/java'))
+    reports {
+        html.required = true
+        xml.required = true
+        csv.required = false
+    }
+}
+
+tasks.named('bootRun') {
+    workingDir rootProject.projectDir
+}
